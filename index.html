@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Questbreak – async D&amp;D prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3ead8;--card:#fbf5e8;--ink:#2a2118;--mute:#6f6149;--acc:#8a5a12;--line:#d9c9a6;--red:#9b2c2c;--ok:#3f6b3a;--onacc:#fff;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15120f;--card:#221d18;--ink:#efe4cc;--mute:#a39a84;--acc:#d9a441;--line:#3a3229;--red:#d96a5a;--ok:#8cc07f;--onacc:#15120f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15120f;--card:#221d18;--ink:#efe4cc;--mute:#a39a84;--acc:#d9a441;--line:#3a3229;--red:#d96a5a;--ok:#8cc07f;--onacc:#15120f;color-scheme:dark}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+.app{max-width:420px;height:100%;margin:0 auto;display:flex;flex-direction:column;position:relative;border-inline:1px solid var(--line)}
+header{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+h1,h2{font-family:Cinzel,Georgia,serif;font-weight:600;letter-spacing:.03em}
+h1{font-size:19px;color:var(--acc)}h2{font-size:17px;margin-bottom:6px}
+main{flex:1;overflow-y:auto;padding:14px 16px}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mute{color:var(--mute);font-size:13px}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute);white-space:nowrap}
+.tag.go{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
+.tag.red{color:var(--red);border-color:var(--red)}.tag.ok{color:var(--ok);border-color:var(--ok)}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{background:var(--acc);color:var(--onacc);border:0;border-radius:10px;padding:10px 14px;width:100%;font-weight:600;margin-top:8px}
+.btn.ghost{background:none;color:var(--acc);border:1px solid var(--acc)}
+.btn:disabled{opacity:.4;cursor:default}
+.choice{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+.choice.sel{border-color:var(--acc);outline:2px solid var(--acc)}
+.story{font-family:Georgia,serif;font-size:16px;line-height:1.55;border-left:3px solid var(--acc);padding-left:12px;margin:8px 0 12px}
+.die{font-family:Cinzel,Georgia,serif;font-size:30px;text-align:center;padding:10px;color:var(--acc)}
+nav{display:flex;border-top:1px solid var(--line);background:var(--card);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;border:0;padding:10px 0;color:var(--mute);font-size:12px}
+nav button.on{color:var(--acc);font-weight:700}
+.bar{display:none;padding:8px 16px;font-size:13px;text-align:center}
+.pausebar{background:var(--red);color:#fff}.livebar{background:var(--ok);color:#fff}
+body.paused .pausebar,body.live .livebar{display:block}
+.turn{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.turn:last-child{border:0}
+.av{width:34px;height:34px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-weight:700;flex:none}
+.av.dm{background:var(--acc);color:var(--onacc)}
+.sw{position:relative;width:46px;height:26px;background:var(--line);border-radius:99px;border:0;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--card);transition:.2s}
+.sw.on{background:var(--acc)}.sw.on::after{left:23px}
+.seg{display:flex;gap:6px;margin-top:8px}.seg button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 0}
+.seg button.on{border-color:var(--acc);color:var(--acc);font-weight:700}
+.inp{flex:1;min-width:0;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.m{max-width:85%;padding:8px 12px;border-radius:12px;margin-bottom:8px;background:var(--card);border:1px solid var(--line)}
+.m b{display:block;font-size:12px;color:var(--acc)}
+.m.ic span{font-family:Georgia,serif;font-style:italic}
+.m.ooc{font-size:13px;color:var(--mute);border-style:dashed}
+.m.dm{max-width:100%;border-left:3px solid var(--acc);font-family:Georgia,serif}
+.m.sys{max-width:100%;text-align:center;background:none;border:0;color:var(--mute);font-size:12px}
+.m.me{margin-left:auto;background:var(--acc);color:var(--onacc);border-color:var(--acc)}.m.me b{color:inherit;opacity:.8}
+.comp{position:sticky;bottom:-14px;background:var(--bg);padding:8px 0 4px}
+.init{display:flex;gap:10px;align-items:center;overflow-x:auto;padding:10px 6px 12px}
+.rd{flex:none;font-size:12px;color:var(--mute);margin-right:2px}
+.ini{flex:none;position:relative;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:18px;border:2px solid var(--line);background:var(--card)}
+.ini::after{content:attr(data-i);position:absolute;bottom:-5px;right:-5px;font-size:10px;line-height:14px;min-width:16px;text-align:center;background:var(--ink);color:var(--bg);border-radius:99px}
+.ini.cur{background:var(--acc);color:var(--onacc);border-color:var(--acc);font-weight:700}
+.ini.en{color:var(--red);border-color:var(--red)}
+.ini.done{opacity:.5}
+.ini.dead{filter:grayscale(1);opacity:.35}
+.map{width:100%;display:block;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.acts button{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 0;font-size:13px}
+.acts button span{display:block;font-size:22px}
+.acts button.on{border-color:var(--acc);outline:2px solid var(--acc)}
+.acts button.used{opacity:.4}
+.panel{width:100%;display:block;min-height:52px;margin-top:10px;font-size:14px}
+.sf{max-height:200px;overflow-y:auto;margin:8px 0}
+.st{margin:0 0 8px;font-family:Georgia,serif;line-height:1.5}
+.st.dm{font-size:15px;border-left:3px solid var(--acc);padding-left:10px}
+.st.ic{font-style:italic;padding-left:13px}.st.ic b{color:var(--acc);font-style:normal}
+.st.sys{font-family:system-ui,sans-serif;font-size:12px;color:var(--mute);padding-left:13px}
+nav button{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+nav button.on svg{fill:currentColor}
+nav button.on svg .dt{stroke:var(--card)}
+.res{display:flex;gap:16px;align-items:center;width:100%;min-width:0;margin:0;padding:8px 16px;border:2px solid var(--line);border-radius:12px;background:var(--card)}
+.rt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;line-height:1.1}
+.rv{font-size:16px;letter-spacing:.04em;line-height:1.1}
+.res.hit{border-color:var(--ok)}.res.miss{border-color:var(--red)}
+.res .big{display:flex;align-items:center;justify-content:center;align-self:stretch;font-family:Cinzel,Georgia,serif;font-size:34px;line-height:1;color:var(--acc);min-width:48px}
+.dmg{transform-box:fill-box;transform-origin:center;animation:pop 1.7s ease-out forwards;pointer-events:none}
+@keyframes pop{0%{transform:translateY(10px) scale(.3);opacity:0}15%{transform:translateY(0) scale(1.45);opacity:1}30%{transform:scale(1)}80%{opacity:1}100%{transform:translateY(-22px);opacity:0}}
+.say{margin-top:12px}
+#dot{display:none;position:absolute;top:7px;left:calc(50% + 9px);width:9px;height:9px;border-radius:50%;background:var(--red);border:2px solid var(--card)}
+#toast{position:absolute;left:16px;right:16px;bottom:72px;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;text-align:center;font-size:14px}
+#toast.show{opacity:1}
+</style></head>
+<body>
+<div class="app">
+<header><h1>Questbreak</h1><span class="tag" id="mode">Lunch mode · 5 min</span></header>
+<div class="bar pausebar">⏸ Mara (DM) paused this session to add content</div>
+<div class="bar livebar">● Live session – everyone’s at the table</div>
+<main>
+
+<section class="screen on" id="play">
+<h2>Your campaigns</h2>
+<p class="mute" style="margin-bottom:10px">Play a scene in minutes. Nobody else needs to be online.</p>
+<div class="card" id="c1"></div>
+<div class="card">
+<div class="row"><b>The Sunken Crypt</b><span class="tag">Waiting</span></div>
+<p class="mute">2 of 4 players submitted · DM acts next</p>
+</div>
+<div class="card">
+<div class="row"><b>Mistwood Road</b><span class="tag red">AI DM active</span></div>
+<p class="mute">DM offline for 24h – the pre-written campaign continues as a safety net.</p>
+</div>
+</section>
+
+<section class="screen" id="scene">
+<p class="mute" style="cursor:pointer" onclick="go('play')">← Campaigns</p>
+<h2>Ashfall Keep · Scene 7</h2>
+<span class="tag">~3 min · async</span>
+<div class="sf" id="story"></div>
+<div class="init"><span class="rd">Round 2</span><span class="ini done" data-i="19" title="Brom">🛡</span><span class="ini cur" data-i="16" title="Lyra (you)">🗡</span><span class="ini en" data-i="12" id="iA" title="Goblin A">👺</span><span class="ini en" data-i="8" id="iB" title="Goblin B">👺</span></div>
+<svg id="map" class="map" viewBox="0 0 320 240"></svg>
+<div class="panel" id="panel"></div>
+<div class="acts"><button id="bA" onclick="setM('atk')"><span>⚔</span>Attack</button><button id="bM" onclick="setM('move')"><span>👣</span>Move</button><button id="bI" onclick="setM('inv')"><span>🎒</span>Inventory</button></div>
+<p class="mute" id="stat" style="text-align:center;margin-top:6px"></p>
+<div class="say"><p class="mute" style="margin-bottom:4px">Say something in character – it becomes part of the story</p><div class="row"><input id="sayIn" class="inp" placeholder="“Not on my watch…”" onkeydown="if(event.key==='Enter')say()"><button class="btn ghost" style="width:auto;margin:0" onclick="say()">Say</button></div></div>
+<button class="btn" id="subBtn" disabled onclick="submitTurn()">End turn &amp; submit</button>
+</section>
+
+<section class="screen" id="table">
+<h2>Ashfall Keep · Turn order</h2>
+<div class="card row">
+<div><b>Live session</b><p class="mute">Switch to real-time with the same state</p></div>
+<button class="sw" id="liveSw" onclick="toggleLive()"></button>
+</div>
+<div class="card" id="turns"></div>
+<p class="mute" id="fallback"></p>
+</section>
+
+<section class="screen" id="chat">
+<h2>Ashfall Keep · Campaign chat</h2>
+<p class="mute" style="margin-bottom:10px">Speak in character any time, even mid-combat. In-character lines become part of the story. Everyone catches up when they’re back.</p>
+<div id="msgs"></div>
+<div class="comp"><div class="seg" style="margin:0 0 8px"><button id="mIc" onclick="setMode('ic')">In character</button><button id="mOoc" onclick="setMode('ooc')">Out of character</button></div>
+<div class="row"><input id="chatIn" class="inp" placeholder="Message the party…" onkeydown="if(event.key==='Enter')sendChat()"><button class="btn" style="width:auto;margin:0" onclick="sendChat()">Send</button></div></div>
+</section>
+
+<section class="screen" id="library">
+<h2>Pre-written campaigns</h2>
+<div class="card"><b>Ashfall Keep</b><p class="mute">12 scenes · 3–4 players · branching</p>
+<div class="row"><button class="btn ghost" onclick="toast('Starting with AI DM…')">Play with AI DM</button><button class="btn" onclick="toast('You’re the DM now')">Run as DM</button></div></div>
+<div class="card"><b>The Sunken Crypt</b><p class="mute">18 scenes · 2–5 players · horror</p>
+<div class="row"><button class="btn ghost" onclick="toast('Starting with AI DM…')">Play with AI DM</button><button class="btn" onclick="toast('You’re the DM now')">Run as DM</button></div></div>
+<div class="card"><b>Mistwood Road</b><p class="mute">8 scenes · solo friendly · short</p>
+<div class="row"><button class="btn ghost" onclick="toast('Starting with AI DM…')">Play with AI DM</button><button class="btn" onclick="toast('You’re the DM now')">Run as DM</button></div></div>
+</section>
+
+<section class="screen" id="dm">
+<h2>DM tools · Ashfall Keep</h2>
+<div class="card" id="dmq"></div>
+<div class="card row"><div><b>Pause session</b><p class="mute">Freeze turns while you edit</p></div><button class="sw" id="pauseSw" onclick="togglePause()"></button></div>
+<div class="card"><b>Branches</b><div id="branches"></div>
+<button class="btn ghost" onclick="addBranch()">+ Add branch</button></div>
+<div class="card"><b>AI fallback after</b><p class="mute">If you don’t act within this time, the AI DM steps in.</p>
+<div class="seg" id="seg"></div></div>
+</section>
+
+</main>
+<nav>
+<button data-t="play" class="on" onclick="go('play')"><svg viewBox='0 0 24 24'><path d='M12 3l8 3v6c0 4.4-3.2 7.8-8 9-4.8-1.2-8-4.6-8-9V6z'/><path class='dt' d='M9 12l2.2 2.2L15 10'/></svg>Play</button>
+<button data-t="table" onclick="go('table')"><svg viewBox='0 0 24 24'><circle cx='9' cy='8' r='3.2'/><path d='M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6z'/><circle cx='17' cy='9' r='2.5'/><path d='M16.5 14.2c2.8.2 4.5 2.1 4.5 5.3h-4'/></svg>Table</button>
+<button data-t="library" onclick="go('library')"><svg viewBox='0 0 24 24'><path d='M6 4h12v16H8a2 2 0 0 1-2-2z'/><path class='dt' d='M10 8.5h5'/></svg>Library</button>
+<button data-t="chat" onclick="go('chat')"><svg viewBox='0 0 24 24'><path d='M4 5h16v11H11l-5 4v-4H4z'/><path class='dt' d='M8 9.5h8M8 12.5h5'/></svg>Chat<span id="dot"></span></button>
+<button data-t="dm" onclick="go('dm')"><svg viewBox='0 0 24 24'><path d='M12 2.5l8.5 5v9L12 21.5l-8.5-5v-9z'/><path class='dt' d='M12 7.5l4 7H8z'/></svg>DM</button>
+</nav>
+<div id="toast"></div>
+</div>
+<script>
+var S={paused:false,live:false,done:false,rolled:false,ai:"24h",n:0,
+ branches:["Goblin ambush → Parley","Goblin ambush → Fight"],
+ samples:["Parley → Goblin chief’s bribe","Fight → Collapsing bridge","Shoot rope → Barrel explosion"]};
+var tabOf={scene:"play"};
+S.mode="ic";S.unread=0;S.choice="";S.total=0;
+S.msgs=[{t:"dm",who:"Mara · DM",text:"The drawbridge groans open. Two goblins crouch behind a barrel, torchlight flickering across their blades."},{t:"sys",who:"",text:"Brom charges in and attacks a goblin · rolled 17 · hit"},{t:"ic",who:"Brom",text:"Stay behind me, Lyra!"},{t:"ooc",who:"Brom",text:"lunch is over, back tonight"},{t:"dm",who:"Mara · DM",text:"Lyra, the ambush is yours to answer."}];
+var DMR=['The goblins exchange a wary glance as your words echo off the stone.','A distant bell tolls from the keep. Something inside has heard you.','The nearest goblin lowers its blade a hair, listening.'];S.n2=0;
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;")}
+function post(t,who,text){S.msgs.push({t:t,who:who,text:text});if(who!=="Lyra"&&t!=="sys"&&!$("chat").classList.contains("on"))S.unread++;render();scrollChat()}
+function scrollChat(){setTimeout(function(){if($("chat").classList.contains("on")){var m=document.querySelector("main");m.scrollTop=m.scrollHeight}},0)}
+function sendChat(){var i=$("chatIn"),v=i.value.trim();if(!v)return;i.value="";post(S.mode,"Lyra",v)}
+function say(){var i=$("sayIn"),v=i.value.trim();if(!v)return;i.value="";post("ic","Lyra",v);toast("Added to the story");setTimeout(function(){post("dm","Mara · DM",DMR[S.n2++%DMR.length])},1600)}
+function setMode(m){S.mode=m;render()}
+function renderChat(){
+ $("msgs").innerHTML=S.msgs.map(function(m){var me=m.who==="Lyra"?" me":"";
+  if(m.t==="sys")return '<div class="m sys">'+esc(m.text)+'</div>';
+  if(m.t==="dm")return '<div class="m dm"><b>'+esc(m.who)+'</b>'+esc(m.text)+'</div>';
+  if(m.t==="ooc")return '<div class="m ooc'+me+'"><b>'+esc(m.who)+' · OOC</b>'+esc(m.text)+'</div>';
+  return '<div class="m ic'+me+'"><b>'+esc(m.who)+'</b><span>“'+esc(m.text)+'”</span></div>'}).join("");
+ $("dot").style.display=S.unread?"inline-block":"none";
+ $("mIc").classList.toggle("on",S.mode==="ic");$("mOoc").classList.toggle("on",S.mode==="ooc");
+ var f=$('story');f.innerHTML=S.msgs.filter(function(m){return m.t!=='ooc'&&!(m.t==='sys'&&/session/.test(m.text))}).map(function(m){
+  if(m.t==='dm')return `<div class='st dm'>${esc(m.text)}</div>`;
+  if(m.t==='ic')return `<div class='st ic'><b>${esc(m.who)}:</b> “${esc(m.text)}”</div>`;
+  return `<div class='st sys'>${esc(m.text)}</div>`}).join('');f.scrollTop=f.scrollHeight;
+}
+function $(i){return document.getElementById(i)}
+function go(id){if(id==="chat")S.unread=0;
+ document.querySelectorAll(".screen").forEach(function(s){s.classList.toggle("on",s.id===id)});
+ document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("on",b.dataset.t===(tabOf[id]||id))});
+ render();
+}
+function toast(m){var t=$("toast");t.textContent=m;t.classList.add("show");setTimeout(function(){t.classList.remove("show")},1800)}
+function pick(i,el){document.querySelectorAll(".choice").forEach(function(c){c.classList.remove("sel")});el.classList.add("sel");S.choice=el.textContent.replace(/^\S+\s/,"");$("rollBtn").disabled=false}
+var G=[{x:5,y:1,hp:7,ac:15},{x:6,y:3,hp:7,ac:15}],BR=[-9,-9],BM=[3,2];
+S.pos=[1,3];S.moved=false;S.acted=false;S.weapon='bow';S.m2=null;S.target=null;S.pot=2;S.msg='Your turn: move into position, then act.';
+function d(n){return Math.ceil(Math.random()*n)}
+function dist(a,b){return Math.max(Math.abs(a[0]-b[0]),Math.abs(a[1]-b[1]))}
+function occ(x,y){return(BR[0]==x&&BR[1]==y)||(BM[0]==x&&BM[1]==y)||G.some(function(g){return g.hp>0&&g.x==x&&g.y==y})}
+function setM(m){
+ if(m==='atk'&&S.acted)return toast('Action already used');
+ if(m==='move'&&S.moved)return toast('Movement already used');
+ S.m2=S.m2===m?null:m;S.target=null;renderScene()}
+function moveTo(x,y){S.pos=[x,y];S.moved=true;S.m2=null;S.msg='You reposition (up to 20 ft).';renderScene()}
+function pickT(i){var g=G[i];if(dist(S.pos,[g.x,g.y])>(S.weapon==='bow'?6:1))return toast('Out of range – move closer or switch weapon');S.target=i;renderScene()}
+function rollAtk(){
+ if(S.rolling)return;
+ var g=G[S.target],P=S.pos,r=d(20),sx=18,sy=222,gx=g.x*40+20,gy=g.y*40+20,L=Math.hypot(gx-sx,gy-sy)||1,ex=gx-(gx-sx)/L*30,ey=gy-(gy-sy)/L*30;
+ S.rolling=true;$('panel').innerHTML='Rolling…';
+ $('map').insertAdjacentHTML('beforeend',`<g id='die'><g id='dieS'><polygon points='0,-16 13.9,-8 13.9,8 0,16 -13.9,8 -13.9,-8' fill='var(--card)' stroke='var(--acc)' stroke-width='2' stroke-linejoin='round'/><polygon points='0,-9 8,5 -8,5' fill='none' stroke='var(--acc)' stroke-width='1.2'/></g><text id='dieT' y='5' font-size='13' font-weight='700' text-anchor='middle' fill='var(--ink)'>20</text></g>`);
+ var el=$('die'),sh=$('dieS'),tn=$('dieT'),t0=performance.now(),last=0;
+ function f(now){
+  var u=Math.min(1,(now-t0)/1400),e=1-Math.pow(1-u,2),x=sx+(ex-sx)*e,y=sy+(ey-sy)*e-Math.abs(Math.sin(u*Math.PI*3))*(1-u)*34;
+  el.setAttribute('transform',`translate(${x},${y}) scale(${1.5+Math.max(0,u-.85)*6})`);sh.setAttribute('transform',`rotate(${u*900})`);
+  if(u<.85){if(now-last>70){tn.textContent=d(20);last=now}}else{tn.textContent=r;tn.setAttribute('fill',r===20?'var(--ok)':r===1?'var(--red)':'var(--ink)')}
+  if(u<1)requestAnimationFrame(f);else setTimeout(function(){el.remove();S.rolling=false;resolveAtk(r)},700)}
+ requestAnimationFrame(f)}
+function resolveAtk(r){
+ var g=G[S.target],bow=S.weapon==='bow',t=r+5,hit=r===20||(r>1&&t>=g.ac),dm=hit?d(bow?6:4)+3:0,n='AB'[S.target];
+ g.hp-=dm;S.acted=true;S.total=t;S.m2=null;S.target=null;
+ S.choice='attacked Goblin '+n+' with the '+(bow?'shortbow':'dagger')+' ('+(hit?'hit, '+dm+' dmg'+(g.hp<=0?', slain':''):'miss')+')';
+ S.msg=`<div class='res ${hit?'hit':'miss'}'><div class='big'>${t}</div><div class='rt'><b class='rv' style='color:var(--${hit?'ok':'red'})'>${hit?(r===20?'CRITICAL HIT':'HIT'):(r===1?'FUMBLE':'MISS')}</b><span class='mute'>d20 (${r}) + 5 vs AC ${g.ac}${hit?' · '+dm+' damage'+(g.hp<=0?' · slain':''):''}</span></div></div>`;
+ renderScene();popDmg(g,hit,dm,r)}
+function popDmg(g,hit,dm,r){
+ var txt=hit?(r===20?'💥':'')+'-'+dm:'MISS';
+ $('map').insertAdjacentHTML('beforeend',`<text class='dmg' id='dmg' x='${g.x*40+20}' y='${g.y*40-3}' font-size='${hit?22:13}' font-weight='800' fill='${hit?'var(--red)':'var(--mute)'}' stroke='var(--card)' stroke-width='3' paint-order='stroke' text-anchor='middle'>${txt}</text>`);
+ setTimeout(function(){var e=$('dmg');if(e)e.remove()},1800)}
+function equip(b){S.weapon=b?'bow':'dagger';S.msg='Equipped the '+(b?'shortbow':'dagger')+'.';S.m2=null;renderScene()}
+function drink(){var h=d(4)+d(4)+2;S.pot--;S.acted=true;S.total=h;S.m2=null;S.choice='drank a healing potion (+'+h+' HP)';S.msg='You drink a healing potion: +'+h+' HP.';renderScene()}
+function tok(x,y,l,f,c){return `<circle cx='${x*40+20}' cy='${y*40+20}' r='15' fill='${f}' stroke='var(--ink)'/><text x='${x*40+20}' y='${y*40+25}' font-size='14' font-weight='700' text-anchor='middle' fill='${c}'>${l}</text>`}
+function renderScene(){
+ if(S.rolling)return;
+ var P=S.pos,bow=S.weapon==='bow',i,j,s=`<rect x='0' y='0' width='40' height='240' fill='var(--line)' opacity='.5'/>`;
+ for(i=0;i<=8;i++)s+=`<line x1='${i*40}' y1='0' x2='${i*40}' y2='240' stroke='var(--line)'/>`;
+ for(j=0;j<=6;j++)s+=`<line x1='0' y1='${j*40}' x2='320' y2='${j*40}' stroke='var(--line)'/>`;
+ if(S.m2==='move')for(i=0;i<8;i++)for(j=0;j<6;j++)if(dist(P,[i,j])<=4&&!occ(i,j)&&!(P[0]==i&&P[1]==j))s+=`<rect x='${i*40+2}' y='${j*40+2}' width='36' height='36' rx='6' fill='var(--ok)' opacity='.3' style='cursor:pointer' onclick='moveTo(${i},${j})'/>`;
+ 
+ if(S.target!==null){var t=G[S.target];s+=`<line x1='${P[0]*40+20}' y1='${P[1]*40+20}' x2='${t.x*40+20}' y2='${t.y*40+20}' stroke='var(--red)' stroke-width='2' stroke-dasharray='5 3'/>`}
+ s+=tok(BM[0],BM[1],'B','var(--ok)','var(--onacc)');
+ G.forEach(function(g,k){
+  var cx=g.x*40+20,cy=g.y*40+20;
+  if(g.hp<=0){s+=`<text x='${cx}' y='${cy+8}' font-size='22' text-anchor='middle'>💀</text>`;return}
+  var inr=S.m2==='atk'&&dist(P,[g.x,g.y])<=(bow?6:1),oc=S.m2==='atk'?`onclick='pickT(${k})' style='cursor:pointer'`:'';
+  s+=`<g ${oc}><circle cx='${cx}' cy='${cy}' r='15' fill='var(--red)' stroke='${inr?'var(--acc)':'var(--ink)'}' stroke-width='${inr?3:1}'/><text x='${cx}' y='${cy+5}' font-size='14' font-weight='700' text-anchor='middle' fill='#fff'>${'AB'[k]}</text><text x='${cx}' y='${cy-17}' font-size='9' text-anchor='middle' fill='var(--ink)'>${g.hp}/7</text></g>`;
+ });
+ s+=`<circle cx='${P[0]*40+20}' cy='${P[1]*40+20}' r='19' fill='none' stroke='var(--acc)' stroke-dasharray='3 2'/>`+tok(P[0],P[1],'L','var(--acc)','var(--onacc)');
+ $('map').innerHTML=s;
+ var p=S.msg;
+ if(S.m2==='move')p='Tap a highlighted square (up to 20 ft).';
+ if(S.m2==='atk')p=S.target!==null?`<b>Goblin ${'AB'[S.target]}</b> · AC 15 · HP ${G[S.target].hp}/7<br>${bow?'Shortbow · +5 to hit · 1d6+3':'Dagger · +5 to hit · 1d4+3'}<button class='btn' onclick='rollAtk()'>Roll to hit</button>`:`Tap a goblin in range. Equipped: ${bow?'Shortbow (30 ft)':'Dagger (5 ft)'}.`;
+ if(S.m2==='inv')p=`<div class='row' style='padding:6px 0'><span>🏹 Shortbow</span><button class='tag' onclick='equip(1)'>${bow?'Equipped':'Equip'}</button></div><div class='row' style='padding:6px 0'><span>🗡 Dagger</span><button class='tag' onclick='equip(0)'>${bow?'Equip':'Equipped'}</button></div><div class='row' style='padding:6px 0'><span>🧪 Healing potion ×${S.pot}</span><button class='tag go' ${S.acted||!S.pot?'disabled':''} onclick='drink()'>Drink</button></div><div class='row' style='padding:6px 0'><span>🔥 Torch</span><span class='tag'>Lit</span></div>`;
+ $('panel').innerHTML=p;
+ $('stat').textContent='Action '+(S.acted?'○ used':'● ready')+'  ·  Movement '+(S.moved?'○ used':'● ready');
+ $('bA').className=(S.m2==='atk'?'on ':'')+(S.acted?'used':'');
+ $('bM').className=(S.m2==='move'?'on ':'')+(S.moved?'used':'');
+ $('bI').className=S.m2==='inv'?'on':'';
+ $('subBtn').disabled=!(S.moved||S.acted);
+ $('iA').classList.toggle('dead',G[0].hp<=0);$('iB').classList.toggle('dead',G[1].hp<=0);
+}
+function oldRoll(){
+ var r=Math.ceil(Math.random()*20);$("die").textContent=r+" + 3 = "+(r+3);S.total=r+3;
+ $("rollBtn").disabled=true;$("subBtn").disabled=false;
+}
+function submitTurn(){S.done=true;toast("Turn submitted – you can close the app");go("table");post("sys","","Lyra "+(S.moved?"moved and ":"")+(S.choice||"held position")+(S.total?" · rolled "+S.total:""));setTimeout(function(){post("ic","Brom","Nice one, Lyra! Mara, your goblins are up.")},1500)}
+function togglePause(){S.paused=!S.paused;post("sys","",S.paused?"Mara paused the session to add content":"Mara resumed the session");document.body.classList.toggle("paused",S.paused);toast(S.paused?"Session paused for players":"Session resumed");render()}
+function toggleLive(){S.live=!S.live;document.body.classList.toggle("live",S.live);$("mode").textContent=S.live?"Live mode":"Lunch mode · 5 min";render()}
+function addBranch(){S.branches.push(S.samples[S.n%S.samples.length]);S.n++;render()}
+function setAi(v){S.ai=v;render()}
+function render(){
+ renderChat();renderScene();
+ $("c1").innerHTML='<div class="row"><b>Ashfall Keep</b>'+(S.paused?'<span class="tag red">Paused by DM</span>':S.done?'<span class="tag ok">Submitted</span>':'<span class="tag go">Your turn</span>')+'</div>'
+  +'<p class="mute">'+(S.paused?"DM is adding content – we’ll ping you.":S.done?"Waiting on Mara (DM) to resolve the round.":"Goblin ambush · about 3 min")+'</p>'
+  +(S.done||S.paused?'':'<button class="btn" onclick="go(\'scene\')">Play scene</button>');
+ $("liveSw").classList.toggle("on",S.live);$("pauseSw").classList.toggle("on",S.paused);
+ var dmState=S.paused?'<span class="tag red">Paused</span>':S.done?'<span class="tag go">Up next</span>':'<span class="tag">After players</span>';
+ $("turns").innerHTML=
+  '<div class="turn"><div class="av">L</div><div style="flex:1"><b>Lyra (you)</b><p class="mute">Rogue</p></div>'+(S.done?'<span class="tag ok">Done</span>':'<span class="tag go">Your turn</span>')+'</div>'
+ +'<div class="turn"><div class="av">B</div><div style="flex:1"><b>Brom</b><p class="mute">Fighter · submitted 2h ago</p></div><span class="tag ok">Done</span></div>'
+ +'<div class="turn"><div class="av dm">M</div><div style="flex:1"><b>Mara · DM</b><p class="mute">Plays the goblins and the world</p></div>'+dmState+'</div>';
+ $("fallback").textContent=S.ai==="Off"?"AI DM fallback is off.":"If Mara doesn’t act within "+S.ai+", the AI DM continues the pre-written campaign.";
+ $("dmq").innerHTML='<div class="row"><b>DM queue</b>'+(S.done?'<span class="tag go">Your turn</span>':'<span class="tag">1 player pending</span>')+'</div><p class="mute">'+(S.done?"2 players submitted. Resolve the goblin ambush.":"Waiting for Lyra to submit.")+'</p>';
+ $("branches").innerHTML=S.branches.map(function(b){return '<p class="mute" style="padding:6px 0;border-bottom:1px solid var(--line)">↳ '+b+'</p>'}).join("");
+ $("seg").innerHTML=["12h","24h","48h","Off"].map(function(v){return '<button class="'+(S.ai===v?"on":"")+'" onclick="setAi(\''+v+'\')">'+v+'</button>'}).join("");
+}
+render();
+</script>
+</body></html>
